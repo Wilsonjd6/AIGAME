@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Corner Blocks</title>
+<style>
+:root{--bg:#f6f5f1;--fg:#1c1c1a;--card:#fff;--line:#d5d3cb;--cell:#ecebe5;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161615;--fg:#eeede8;--card:#222220;--line:#3a3a36;--cell:#2b2b28}}
+:root[data-theme="dark"]{--bg:#161615;--fg:#eeede8;--card:#222220;--line:#3a3a36;--cell:#2b2b28}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:760px;margin:0 auto;padding:12px}
+h1{font-size:20px;margin:4px 0}
+#status{font-weight:600;padding:8px 10px;border-radius:8px;background:var(--card);border:1px solid var(--line);margin:8px 0}
+#board{display:grid;grid-template-columns:repeat(20,1fr);gap:1px;background:var(--line);border:2px solid var(--line);width:100%;max-width:520px;aspect-ratio:1;margin:0 auto;touch-action:none;user-select:none}
+.c{background:var(--cell);position:relative}
+.c.st::after{content:"";position:absolute;inset:30%;border-radius:50%;border:2px solid var(--sc)}
+.c.pv{outline:2px solid #2fb36d;outline-offset:-2px;filter:brightness(1.1)}
+.c.bad{outline:2px solid #e5484d;outline-offset:-2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+button{font:inherit;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--fg)}
+#tray{display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--card);border:1px solid var(--line);border-radius:8px}
+.pc{touch-action:none;user-select:none;-webkit-user-select:none;display:grid;gap:1px;padding:5px;border:2px solid transparent;border-radius:6px;background:none}
+.pc.sel{border-color:var(--fg)}
+.pc i{width:14px;height:14px;display:block}
+#put:not(:disabled){background:#2fb36d;color:#fff;border-color:#2fb36d}#put:disabled{opacity:.45;cursor:default}
+#scores{display:flex;gap:10px;flex-wrap:wrap;font-size:13px}
+#scores span{display:flex;align-items:center;gap:5px}
+#scores b{width:12px;height:12px;border-radius:3px;display:inline-block}
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);align-items:center;justify-content:center;z-index:20}#modal>div{background:var(--card);padding:20px 24px;border-radius:12px;text-align:center;max-width:300px}#modal h2{margin:0 0 6px}
+#lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);align-items:center;justify-content:center;z-index:30}#lb>div{background:var(--card);padding:20px;border-radius:12px;text-align:center;width:min(92vw,380px)}#lb h2{margin:0}
+#pod{display:flex;align-items:flex-end;justify-content:center;gap:6px;margin:14px 0 10px;height:190px}
+.pl{display:flex;flex-direction:column;align-items:center;width:30%}.pl .nm{font-weight:600;font-size:13px}.pl .sc{font-size:12px;opacity:.8;margin-bottom:4px}
+.pl .bar{width:100%;border-radius:6px 6px 0 0;display:flex;align-items:flex-start;justify-content:center;font-size:22px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6);padding-top:4px;box-sizing:border-box}
+#start{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);align-items:center;justify-content:center;z-index:40}#start>div{background:var(--card);padding:20px;border-radius:12px;text-align:center;width:min(92vw,340px)}#start h2{margin:0 0 4px}
+small{opacity:.75}
+</style></head><body><main>
+<h1>Corner Blocks</h1>
+<small>A Blokus-style game for 2 to 4 players on one screen. Your pieces must touch your own pieces at corners only, never along an edge. Your first piece must cover your corner. Drag a piece onto the board, then tap Place piece.</small>
+<details><summary><b>How to play</b></summary><p><b>Goal:</b> place as many of your 21 pieces as you can. The player with the most squares placed wins.</p><p><b>Placing:</b> drag a piece from the tray onto the board. A green outline means the spot is legal and red means it isn’t. The outline stays where you drop it, so you can use Rotate and Flip, or drag again to adjust. Then tap <b>Place piece</b> (or press Enter). On a computer you can also just hover and click.</p><p><b>Rules:</b> your first piece must cover your colored corner ring. After that, each piece must touch one of your own pieces at a corner, and never along an edge. Touching other colors is fine.</p><p><b>Stuck?</b> If you have no legal moves, you’ll be asked to forfeit. CPU players move on their own.</p></details>
+<div id="status"></div>
+<div id="board"></div>
+<div class="row">
+<button id="rot">Rotate (R)</button><button id="flip">Flip (F)</button><button id="put" disabled>Place piece</button><button id="pass">Forfeit</button><button id="new">New game</button>
+</div>
+<div id="tray"></div>
+<div id="scores" class="row"></div>
+<div id="modal"><div><h2>Game over</h2><p id="mt"></p><button id="ff">Forfeit</button></div></div>
+<div id="lb"><div><h2>Final standings</h2><div id="pod"></div><p id="fourth"></p><div class="row" style="justify-content:center"><button id="again">Play again</button><button id="close">View board</button></div></div></div>
+<div id="start"><div><h2>Corner Blocks</h2><div id="s1"><p>How many players in total?</p><div class="row" style="justify-content:center"><button data-n="2">2 players</button><button data-n="3">3 players</button><button data-n="4">4 players</button></div><small>With 2 players, you start in opposite corners.</small></div><div id="s2" style="display:none"><p id="s2t"></p><div id="cpub" class="row" style="justify-content:center"></div><button id="back">Back</button></div></div></div>
+</main>
+<script>
+const N=20,COLORS=['#2f6fed','#f5c518','#e5484d','#2fb36d'],NAMES=['Blue','Yellow','Red','Green'],S=[[0,0],[0,19],[19,19],[19,0]];
+const SH=["X","XX","XXX","X./XX","XXXX","X../XXX",".X./XXX","XX/XX",".XX/XX.",".XX/XX./.X.","XXXXX","X.../XXXX","XX../.XXX","XX/XX/X.","XXX/.X./.X.","X.X/XXX","X../X../XXX","X../XX./.XX",".X./XXX/.X.",".X../XXXX","XX./.X./.XX"];
+const PIECES=SH.map(s=>{const a=[];s.split("/").forEach((row,r)=>[...row].forEach((ch,c)=>{if(ch==="X")a.push([r,c])}));return a});
+let B,used,first,passed,turn,sel,orient,over,stuck=false,lbClosed=false,hover=null,active=[0,1,2,3],cpus=[],cpuBusy=false,ptype="mouse",dragging=false;
+const $=id=>document.getElementById(id);
+function norm(c){const mr=Math.min(...c.map(x=>x[0])),mc=Math.min(...c.map(x=>x[1]));return c.map(([r,k])=>[r-mr,k-mc])}
+function init(n,k){const L=n===2?[0,2]:n===3?[0,1,2]:[0,1,2,3];cpus=L.slice(n-k);NAMES.forEach((_,i)=>NAMES[i]=["Blue","Yellow","Red","Green"][i]+(cpus.includes(i)?" (CPU)":""));active=n===2?[0,2]:n===3?[0,1,2]:[0,1,2,3];B=Array(N*N).fill(-1);used=[0,1,2,3].map(()=>new Set());first=[0,1,2,3].map(p=>active.includes(p));passed=[0,1,2,3].map(p=>!active.includes(p));$("start").style.display="none";turn=0;sel=null;orient=null;over=false;stuck=false;lbClosed=false;render()}
+function pick(i){if(cpus.includes(turn))return;sel=i;orient=PIECES[i].map(x=>x.slice());render()}
+function rot(){if(sel===null)return;orient=norm(orient.map(([r,c])=>[c,-r]));render()}
+function flip(){if(sel===null)return;orient=norm(orient.map(([r,c])=>[r,-c]));render()}
+function at(r,c){return r<0||c<0||r>=N||c>=N?-2:B[r*N+c]}
+function cellsFor(r,c){const h=Math.max(...orient.map(x=>x[0]))+1,w=Math.max(...orient.map(x=>x[1]))+1,cr=h>>1,cc=w>>1;return orient.map(([a,b])=>[r+a-cr,c+b-cc])}
+function valid(p,cells){let corner=false,start=!first[p];
+for(const [r,c] of cells){if(at(r,c)!==-1)return false;
+for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]])if(at(r+dr,c+dc)===p)return false;
+for(const [dr,dc] of [[1,1],[1,-1],[-1,1],[-1,-1]])if(at(r+dr,c+dc)===p)corner=true;
+if(first[p]&&r===S[p][0]&&c===S[p][1])start=true}
+return first[p]?start:corner}
+function hasMove(p){if(used[p].size>=21)return false;
+for(let i=0;i<21;i++){if(used[p].has(i))continue;let o=PIECES[i].map(x=>x.slice());
+for(let f=0;f<2;f++){for(let k=0;k<4;k++){
+for(let r=0;r<N;r++)for(let c=0;c<N;c++){if(valid(p,o.map(([a,b])=>[r+a,c+b])))return true}
+o=norm(o.map(([a,b])=>[b,-a]))}
+o=norm(o.map(([a,b])=>[a,-b]))}}
+return false}
+function remaining(p){let t=0;PIECES.forEach((x,i)=>{if(!used[p].has(i))t+=x.length});return t}
+function advance(){hover=null;
+for(let k=1;k<=4;k++){const p=(turn+k)%4;if(!passed[p]&&used[p].size<21){turn=p;sel=null;orient=null;stuck=!hasMove(p);return}}
+over=true;stuck=false;sel=null;orient=null}
+function place(r,c){if(over||sel===null||cpus.includes(turn))return;const cells=cellsFor(r,c);if(!valid(turn,cells))return;
+cells.forEach(([a,b])=>B[a*N+b]=turn);used[turn].add(sel);first[turn]=false;
+if(used[turn].size===21)passed[turn]=true;advance();render();cpuTurn()}
+function showLB(){const sc=[0,1,2,3].map(score),ord=active.slice().sort((a,b)=>sc[b]-sc[a]);
+const rk=ord.map((p,i)=>i);for(let i=0;i<ord.length;i++)rk[i]=(i>0&&sc[ord[i]]===sc[ord[i-1]])?rk[i-1]:i+1;
+const H={1:120,2:85,3:58},order=[1,0,2].filter(i=>i<ord.length);
+$("pod").innerHTML=order.map(i=>{const p=ord[i];return "<div class='pl'><div class='nm'>"+NAMES[p]+"</div><div class='sc'>"+sc[p]+" pts</div><div class='bar' style='height:"+H[Math.min(rk[i],3)]+"px;background:"+COLORS[p]+"'>"+rk[i]+"</div></div>"}).join("");
+$("fourth").textContent=ord.length>3?"4th place: "+NAMES[ord[3]]+" ("+sc[ord[3]]+" pts)":""}
+const K=(r,c)=>r*100+c,DG=[[1,1],[1,-1],[-1,1],[-1,-1]],OR=[[1,0],[-1,0],[0,1],[0,-1]];
+function oppCorners(p){const s=new Set();
+for(const q of active){if(q===p)continue;
+if(first[q]){if(at(S[q][0],S[q][1])===-1)s.add(K(S[q][0],S[q][1]));continue}
+for(let r=0;r<N;r++)for(let c=0;c<N;c++){if(B[r*N+c]!==q)continue;
+for(const [dr,dc] of DG){const a=r+dr,b=c+dc;if(at(a,b)!==-1)continue;
+if(OR.some(([x,y])=>at(a+x,b+y)===q))continue;s.add(K(a,b))}}}
+return s}
+function evalMove(p,cells,opp,early){const set=new Set(cells.map(([r,c])=>K(r,c)));
+const cor=new Set();let block=0,dist=0;
+for(const [r,c] of cells){if(opp.has(K(r,c)))block++;dist+=Math.hypot(r-9.5,c-9.5);
+for(const [dr,dc] of DG){const a=r+dr,b=c+dc;if(at(a,b)!==-1||set.has(K(a,b)))continue;
+if(OR.some(([x,y])=>at(a+x,b+y)===p||set.has(K(a+x,b+y))))continue;cor.add(K(a,b))}}
+return cells.length*3+cor.size*2+block*3+early*1.5*(14-dist/cells.length)}
+function bestMove(p){const opp=oppCorners(p),early=Math.max(0,8-used[p].size)/8;const bp={};
+for(let i=0;i<21;i++){if(used[p].has(i))continue;let o=PIECES[i].map(x=>x.slice());
+for(let f=0;f<2;f++){for(let k=0;k<4;k++){
+for(let r=0;r<N;r++)for(let c=0;c<N;c++){const cells=o.map(([a,b])=>[r+a,c+b]);if(!valid(p,cells))continue;
+const s=evalMove(p,cells,opp,early);if(!bp[i]||s>bp[i].s)bp[i]={s,i,cells}}
+o=norm(o.map(([a,b])=>[b,-a]))}
+o=norm(o.map(([a,b])=>[a,-b]))}}
+const top=Object.values(bp).sort((a,b)=>b.s-a.s).slice(0,used[p].size<3?6:4);return top.length?top[Math.floor(Math.random()*top.length)]:null}
+function cpuTurn(){if(over||!cpus.includes(turn)||cpuBusy)return;cpuBusy=true;
+setTimeout(()=>{cpuBusy=false;if(over||!cpus.includes(turn))return;const p=turn,m=bestMove(p);
+if(!m){forfeit();return}
+m.cells.forEach(([a,b])=>B[a*N+b]=p);used[p].add(m.i);first[p]=false;
+if(used[p].size===21)passed[p]=true;advance();render();cpuTurn()},600)}
+function cellAt(e){const rc=$("board").getBoundingClientRect(),cs=rc.width/N,off=e.pointerType==="touch"?Math.max(60,cs*3.5):0;
+return [Math.floor((e.clientY-off-rc.top)/cs),Math.floor((e.clientX-rc.left)/cs)]}
+function dragMove(e){const [r,c]=cellAt(e);if(r<0||c<0||r>=N||c>=N)return;if(!hover||hover[0]!==r||hover[1]!==c){hover=[r,c];render()}}
+function startDrag(){const up=()=>{dragging=false;document.removeEventListener("pointermove",dragMove);document.removeEventListener("pointerup",up);document.removeEventListener("pointercancel",up);render()};
+document.addEventListener("pointermove",dragMove);document.addEventListener("pointerup",up);document.addEventListener("pointercancel",up)}
+function score(p){return 89-remaining(p)}
+function render(){
+const bd=$("board");bd.innerHTML="";
+let pv=new Map();
+if(hover&&sel!==null&&!over){const cs=cellsFor(hover[0],hover[1]),ok=valid(turn,cs);cs.forEach(([r,c])=>pv.set(r+","+c,ok))}
+for(let r=0;r<N;r++)for(let c=0;c<N;c++){const d=document.createElement("div");d.className="c";const v=B[r*N+c];
+if(v>=0)d.style.background=COLORS[v];
+else{const si=S.findIndex(s=>s[0]===r&&s[1]===c);if(si>=0&&first[si]){d.classList.add("st");d.style.setProperty("--sc",COLORS[si])}}
+const k=r+","+c;if(pv.has(k))d.classList.add(pv.get(k)?"pv":"bad");
+d.onmouseenter=()=>{if(ptype==="mouse"){hover=[r,c];render()}};bd.appendChild(d)}
+bd.onmouseleave=()=>{if(ptype==="mouse"){hover=null;render()}};
+const st=$("status");$("modal").style.display=(stuck&&!over&&!cpus.includes(turn))?"flex":"none";if(stuck&&!over&&!cpus.includes(turn))$("mt").textContent=NAMES[turn]+" has no legal moves left.";$("lb").style.display=(over&&!lbClosed)?"flex":"none";if(over&&!lbClosed)showLB();
+if(over){const sc=[0,1,2,3].map(p=>active.includes(p)?score(p):-1),best=Math.max(...sc);st.textContent="Game over! Winner: "+NAMES.filter((n,i)=>sc[i]===best).join(" & ")+" ("+best+" pts)"}
+else{st.textContent=NAMES[turn]+"’s turn"+(cpus.includes(turn)?" – thinking…":(first[turn]?" – cover your corner marker first":"")+(sel===null?" – pick a piece":""));st.style.borderLeft="8px solid "+COLORS[turn]}
+const tr=$("tray");if(!dragging)tr.innerHTML="";
+if(!dragging&&!over&&!cpus.includes(turn))PIECES.forEach((shape,i)=>{if(used[turn].has(i))return;const cells=i===sel?orient:shape;
+const w=Math.max(...cells.map(x=>x[1]))+1;const b=document.createElement("button");b.className="pc"+(i===sel?" sel":"");
+b.style.gridTemplateColumns="repeat("+w+",14px)";
+const h=Math.max(...cells.map(x=>x[0]))+1;
+for(let r=0;r<h;r++)for(let c=0;c<w;c++){const e=document.createElement("i");if(cells.some(x=>x[0]===r&&x[1]===c))e.style.background=COLORS[turn];b.appendChild(e)}
+b.style.touchAction="none";b.onpointerdown=e=>{e.preventDefault();try{e.target.releasePointerCapture(e.pointerId)}catch(_){}if(cpus.includes(turn))return;dragging=true;if(sel!==i)pick(i);[...tr.children].forEach(x=>x.classList.toggle("sel",x===b));startDrag()};tr.appendChild(b)});
+$("put").disabled=!(hover&&sel!==null&&!over&&!cpus.includes(turn)&&valid(turn,cellsFor(hover[0],hover[1])));$("scores").innerHTML=NAMES.map((n,i)=>!active.includes(i)?"":"<span><b style='background:"+COLORS[i]+"'></b>"+n+": "+remaining(i)+" squares left"+(passed[i]?" (done)":"")+"</span>").join("")}
+$("rot").onclick=rot;$("flip").onclick=flip;$("new").onclick=showStart;
+function forfeit(){if(over)return;passed[turn]=true;advance();render();cpuTurn()}
+$("pass").onclick=()=>{if(!cpus.includes(turn))forfeit()};$("ff").onclick=forfeit;$("again").onclick=showStart;$("close").onclick=()=>{lbClosed=true;render()};
+document.addEventListener("keydown",e=>{const k=e.key.toLowerCase();if(k==="r")rot();if(k==="f")flip();if(e.key==="Enter"&&hover){e.preventDefault();place(hover[0],hover[1])}});
+function showStart(){$("start").style.display="flex";$("s1").style.display="block";$("s2").style.display="none"}
+document.querySelectorAll("#start button[data-n]").forEach(b=>b.onclick=()=>{const n=+b.dataset.n;$("s1").style.display="none";$("s2").style.display="block";$("s2t").textContent="Of the "+n+" players, how many are CPU?";const bx=$("cpub");bx.innerHTML="";for(let k=0;k<n;k++){const e=document.createElement("button");e.textContent=k===0?"0 CPU (all human)":k+" CPU";e.onclick=()=>init(n,k);bx.appendChild(e)}});
+$("back").onclick=showStart;
+document.addEventListener("pointerdown",e=>{ptype=e.pointerType},true);
+document.addEventListener("pointermove",e=>{if(e.pointerType==="mouse")ptype="mouse"},true);
+$("board").onpointerdown=e=>{if(over||sel===null||cpus.includes(turn))return;e.preventDefault();try{e.target.releasePointerCapture(e.pointerId)}catch(_){}
+if(e.pointerType==="mouse"){const [r,c]=cellAt(e);hover=[r,c];place(r,c);return}
+dragging=true;dragMove(e);startDrag()};
+$("put").onclick=()=>{if(hover)place(hover[0],hover[1])};
+init(4,0);showStart();
+</script></body></html>
